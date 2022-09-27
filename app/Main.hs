@@ -1,8 +1,9 @@
 module Main where
 
 import Control.Monad (replicateM)
-import Data.Char (isAsciiLower, isAsciiUpper)
+import Data.Char (isDigit, isLetter)
 import Data.Maybe (isJust)
+import System.Environment (getArgs)
 import Text.Parsec
 import Text.Printf (printf)
 
@@ -19,7 +20,7 @@ brCurly = ('{', '}')
 brAngle = ('<', '>')
 
 brackets :: [Bracket]
-brackets = [brRound, brSquare, brCurly]
+brackets = [brRound, brSquare, brCurly, brAngle]
 
 data Value
   = Int Int
@@ -59,9 +60,14 @@ intP :: Parser Value
 intP = Int . read <$> many1 digit
 
 atomP :: Parser Value
-atomP = Atom <$> many1 (satisfy (\c -> any (\f -> f c) [isAsciiLower, isAsciiUpper, (`elem` symbols)]))
+atomP = Atom <$> many1 (satisfy (\c -> any (\f -> f c) options))
   where
-    symbols = "!?+-*/<=>$%&~:@"
+    symbols = "!?+-*/=%&~:@.|"
+    options =
+      [ isLetter,
+        isDigit,
+        (`elem` symbols)
+      ]
 
 rawCharP :: Parser Char
 rawCharP = do
@@ -81,8 +87,11 @@ rawCharP = do
 charP :: Parser Value
 charP = char '\'' *> (Char <$> rawCharP) <* char '\''
 
+rawStringP :: Parser String
+rawStringP = many rawCharP
+
 stringP :: Parser Value
-stringP = char '"' *> (String <$> many rawCharP) <* char '"'
+stringP = char '"' *> (String <$> rawStringP) <* char '"'
 
 listP :: Parser Value
 listP = do
@@ -105,24 +114,22 @@ innerListP outerBracket multiMode acc0 = do
         if mlm' && length acc > 1
           then [List outerBracket $ reverse acc]
           else acc
-  maybeSpc <- optionMaybe spaceP
+  maybeSpc <- (Just Special ==) <$> optionMaybe spaceP
   maybeEnd <- optionMaybe (eof <|> () <$ char (snd outerBracket))
-
   case (maybeSpc, maybeEnd) of
     (_, Just _) -> return $ flush multiMode
-    (Just Normal, _) -> innerListP outerBracket multiMode acc
-    (Just Special, _) -> (++ flush True) <$> innerListP outerBracket True []
-    _ -> error "Impossible" -- either space or end will always appear
+    (False, _) -> innerListP outerBracket multiMode acc
+    (True, _) -> (++ flush True) <$> innerListP outerBracket True []
 
 valueP :: Parser Value
 valueP =
   foldl1
     (<|>)
-    [ intP,
+    [ listP,
+      intP,
       atomP,
       charP,
-      stringP,
-      listP
+      stringP
     ]
 
 fileP :: Parser [Value]
@@ -130,7 +137,8 @@ fileP = defaultInnerListP brRound
 
 main :: IO ()
 main = do
-  let test = "test.fl"
+  args <- getArgs
+  let test = if null args then "test.fl" else head args
   file <- readFile test
   let vals = parse fileP test file
   either print (mapM_ print) vals

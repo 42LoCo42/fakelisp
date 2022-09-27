@@ -1,0 +1,78 @@
+# -*- mode: text; -*-
+
+use another.package.path
+use foo.bar.baz
+
+# atomare Typen:
+# Pointer
+# I8 I16 I32 I64
+# U8 U16 U32 U64
+
+# Typ-Aliase
+type Byte = U8
+type Char = U32 # unicode codepoint
+type UInt = U64
+type Int = I64
+type Float = F64
+
+# strukturale Typen
+type Car = {
+	var seats U8
+	var speed F64
+}
+
+# parametrische Typen
+type Pair<A, B> = {
+	var fst A
+	var snd B
+}
+
+# variante Typen
+type Number = Int | UInt | Float
+
+# Subtypen
+type Foo = {
+	# mögliche Inhalte für Foo
+	# Zugriff nur in Subtyp-safe Bereich möglich!
+	| SubtypA = {
+		var eins Int
+		var zwei Int
+	}
+	| SubtypB = {
+		var drei Int
+		var vier Int
+	}
+
+	# Subtypen können auch nur definiert werden
+	type SubtypC = {
+		var fünf Int
+	}
+
+	# und alle Subtypen können auch in Variablen benutzt werden
+	# (diese Variablen sind immer vorhanden, wie in einem ganz normalen struct)
+	var immerEinA SubtypA
+	var immerEinC SubtypC
+
+	# alle Subtypen sind unter dem Haupttyp gescoped (im Gegensatz zu Haskell)
+	# in speziellen Situationen (z.B. Varianten-Check sind sie direkt sichtbar)
+}
+
+# Funktionstypen
+type Supplier<T> = () T
+type Consumer<T> = (T) ()
+type BinaryOp = (Int, Int) Int
+
+# Anonyme Records (brauchen wir das wirklich?)
+type IgnoreThis = {
+	lookHere: {
+		someValue: Int
+		enabled: Bool
+	}
+}
+
+# Vollständig anonyme Records == Tupel
+type TwoNumbers = (Int, UInt)
+
+type Get<T> = (list: List<T>, index: UInt): T
+func get1<T>(list: List<T>, index: UInt): T {}
+func get2: Get {} # TODO head übernimmt typdeklaration?
