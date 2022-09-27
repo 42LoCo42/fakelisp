@@ -1,6 +1,7 @@
 module Main where
 
-import Data.Either (fromRight)
+import Control.Monad (replicateM)
+import Data.Char (isAsciiLower, isAsciiUpper)
 import Text.Parsec
 import Text.Printf (printf)
 
@@ -17,14 +18,20 @@ brCurly = ('{', '}')
 brAngle = ('<', '>')
 
 brackets :: [Bracket]
-brackets = [brRound, brSquare, brCurly, brAngle]
+brackets = [brRound, brSquare, brCurly]
 
 data Value
   = Int Int
+  | Atom String
+  | Char Char
+  | String String
   | List Bracket [Value]
 
 instance Show Value where
   show (Int i) = show i
+  show (Atom a) = a
+  show (Char c) = printf "'%c'" c
+  show (String s) = printf "\"%s\"" s
   show (List b l) =
     printf
       "%c%s%c"
@@ -50,15 +57,44 @@ spaceP = do
 intP :: Parser Value
 intP = Int . read <$> many1 digit
 
+atomP :: Parser Value
+atomP = Atom <$> many1 (satisfy (\c -> any (\f -> f c) [isAsciiLower, isAsciiUpper, (`elem` symbols)]))
+  where
+    symbols = "!?+-*/<=>$%&~:@"
+
+rawCharP :: Parser Char
+rawCharP = do
+  start <- noneOf "\""
+  case start of
+    '\\' -> do
+      code <- anyChar
+      case code of
+        'n' -> return '\n'
+        't' -> return '\t'
+        'u' -> do
+          digits <- replicateM 4 hexDigit
+          return $ read $ printf "'\\x%s'" digits
+        c -> return c
+    c -> return c
+
+charP :: Parser Value
+charP = char '\'' *> (Char <$> rawCharP) <* char '\''
+
+stringP :: Parser Value
+stringP = char '"' *> (String <$> many rawCharP) <* char '"'
+
 listP :: Parser Value
 listP = do
   opening <- oneOf (map fst brackets) <* optional spaceP
   let btup = head $ filter (\t -> fst t == opening) brackets
   List btup . reverse <$> innerListP btup False []
 
+defaultInnerListP :: Bracket -> Parser [Value]
+defaultInnerListP b = reverse <$> innerListP b False []
+
 innerListP :: Bracket -> Bool -> [Value] -> Parser [Value]
 innerListP outerBracket multiMode acc0 = do
-  value <- valueP
+  value <- optional spaceP *> valueP
   let acc = value : acc0
   let flush mlm' =
         if mlm' && length acc > 1
@@ -78,14 +114,18 @@ valueP =
   foldl1
     (<|>)
     [ intP,
+      atomP,
+      charP,
+      stringP,
       listP
     ]
 
 fileP :: Parser [Value]
-fileP = emptyP *> valueP `sepEndBy` emptyP
+fileP = defaultInnerListP brRound
 
 main :: IO ()
 main = do
   let test = "test.fl"
   file <- readFile test
-  mapM_ print $ fromRight [] $ parse fileP test file
+  let vals = parse fileP test file
+  either print (mapM_ print) vals

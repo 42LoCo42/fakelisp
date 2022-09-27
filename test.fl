@@ -14,7 +14,7 @@
 }
 
 # multiple elements followed by a comma create a sublist
-<1 2 3, 4 5 6, 7 8 9>
+(1 2 3, 4 5 6, 7 8 9)
 # parsed as: ((1 2 3) (4 5 6) (7 8 9))
 
 # the same happens with linebreaks
@@ -32,6 +32,8 @@
     1 2 3, 4
     5 6, 7 8,
     # even more comments
-    <{9 10, 11}>
+    [{9 10, 11}]
 )
-# parsed as: ((1 2 3) 4 (5 6) (7 8) <{{9 10} 11}>)
+# parsed as: ((1 2 3) 4 (5 6) (7 8) [{{9 10} 11}])
+
+("foo" '\u002A' "\"")
