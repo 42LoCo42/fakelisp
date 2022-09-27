@@ -1,0 +1,37 @@
+# -*- mode: text; -*-
+
+# list items can be separated with spaces or tabs
+(1 2 3)
+
+# or with commas
+[1, 2, 3]
+
+# and even with linebreaks
+{
+    1
+    2 # comments are ok here
+    3
+}
+
+# multiple elements followed by a comma create a sublist
+<1 2 3, 4 5 6, 7 8 9>
+# parsed as: ((1 2 3) (4 5 6) (7 8 9))
+
+# the same happens with linebreaks
+(
+    1 2 3
+    4 5 6
+    # more commments
+    7 8 9
+)
+# equal to previous list
+
+# and even complex hybrids are possible
+(
+    # commments...
+    1 2 3, 4
+    5 6, 7 8,
+    # even more comments
+    <{9 10, 11}>
+)
+# parsed as: ((1 2 3) 4 (5 6) (7 8) <{{9 10} 11}>)
