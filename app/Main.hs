@@ -2,6 +2,7 @@ module Main where
 
 import Control.Monad (replicateM)
 import Data.Char (isAsciiLower, isAsciiUpper)
+import Data.Maybe (isJust)
 import Text.Parsec
 import Text.Printf (printf)
 
@@ -87,7 +88,11 @@ listP :: Parser Value
 listP = do
   opening <- oneOf (map fst brackets) <* optional spaceP
   let btup = head $ filter (\t -> fst t == opening) brackets
-  List btup . reverse <$> innerListP btup False []
+  -- handle empty lists
+  end <- optional spaceP *> optionMaybe (char $ snd btup)
+  if isJust end
+    then return $ List btup []
+    else List btup . reverse <$> innerListP btup False []
 
 defaultInnerListP :: Bracket -> Parser [Value]
 defaultInnerListP b = reverse <$> innerListP b False []
