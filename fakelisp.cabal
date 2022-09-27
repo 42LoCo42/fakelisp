@@ -7,6 +7,8 @@ maintainer:         leonsch@protonmail.com
 executable fakelisp
     main-is:          Main.hs
     other-modules:
+        Types
+        Parser
     other-extensions:
     build-depends:
         base ^>=4.14.3.0,
