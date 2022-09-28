@@ -36,3 +36,8 @@ instance Show Value where
       (fst b)
       (unwords $ map show l)
       (snd b)
+
+data Toplevel
+  = TLUse [String]
+  | TLTypeDef
+  | TLFuncDev
