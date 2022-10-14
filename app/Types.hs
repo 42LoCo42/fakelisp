@@ -38,7 +38,60 @@ instance Show Value where
     then printf "(\n%s)" $ concatMap (unlines . map ('\t' :) . lines . show) l
     else printf "(%s)" $ unwords $ map show l
 
+data Type
+  = Type
+    { typeName :: String
+    , typeNull :: Bool
+    }
+
+data FunctionType
+  = FunctionType
+    { functionTypeGenerics :: [String]
+    , functionTypeArgs     :: [(String, Type)]
+    , functionTypeReturn   :: Type
+    }
+
+data TypeDef
+  = TypeDef
+    { tdName    :: String
+    , tdVariant :: TypeDefVariant
+    }
+
+data TypeDefVariant
+  = TDAlias Type
+  | TDStruct
+    { tdStructParams     :: [String]
+    , tdStructVars       :: VarDefs
+    , tdStructSubTypes   :: [(String, VarDefs)]
+    , tdStructScopeTypes :: [(String, VarDefs)]
+    }
+  | TDVariant [Type]
+  | TDTuple [Type]
+  | TDFunction FunctionType
+
+data FuncDef
+  = FuncDef
+    { fdName :: String
+    , fdType :: FunctionType
+    , fdBody :: [Expr]
+    }
+
+data VarDef
+  = VarDef
+    { vdName    :: String
+    , vdMutable :: Bool
+    , vdTypDef  :: TypeDefVariant
+    , vdInitial :: Expr
+    }
+
+
+type VarDefs = [(String, VarDef)]
+
+data Expr
+  = ExprTypeDef TypeDef
+  | ExprFuncDef FuncDef
+  | ExprVarDef VarDef
+
 data Toplevel
   = TLUse [String]
-  | TLTypeDef
-  | TLFuncDev
+  | TLExpr Expr

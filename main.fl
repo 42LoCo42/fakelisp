@@ -1,12 +1,15 @@
 # -*- mode: text; -*-
 
-use another.package.path
-use foo.bar.baz
+use relative/to/current/module         # last component is a filename
+use ~/relative/to/project              # project root identified by special file
+use /core/package                      # package from standard library
+use /github.com/User/Repo/path/to/file # first component not in stdlib: treat as URL & download to local store
 
 # atomare Typen:
-# Pointer
+# Ptr (= void*)
 # I8 I16 I32 I64
 # U8 U16 U32 U64
+# F32 F64 (vielleicht F128)
 
 # Typ-Aliase
 type Byte  = U8
@@ -14,6 +17,9 @@ type Char  = U32 # unicode codepoint
 type UInt  = U64
 type Int   = I64
 type Float = F64
+
+# Nullable Typen
+type MaybeInt = Int?
 
 # strukturale Typen
 type Car {
@@ -34,35 +40,45 @@ type Number = Int | UInt | Float
 type Foo {
 	# mögliche Inhalte für Foo
 	# Zugriff nur in Subtyp-safe Bereich möglich!
-	| SubtypA {
+	= SubtypA {
 		var eins Int
-		var zwei Int
 	}
 	| SubtypB {
+		var zwei Int
+	}
+
+	# ein weiteres Set von Varianten
+	= SubtypC {
 		var drei Int
+	}
+	| SubtypD {
 		var vier Int
 	}
 
+	# alle Variantentypen müssen verschiedene Namen haben!
+	# Zugriff:
+	#	var meinFoo Foo
+	#	if meinFoo has SubtypA {
+	#		print meinFoo.SubtypA.eins
+	#	}
+
 	# Subtypen können auch nur definiert werden
-	type SubtypC {
+	type SubtypE {
 		var fünf Int
 	}
 
 	# und alle Subtypen können auch in Variablen benutzt werden
 	# (diese Variablen sind immer vorhanden, wie in einem ganz normalen struct)
 	var immerEinA SubtypA
-	var immerEinC SubtypC
+	var immerEinE SubtypE
+
+	# Variable mit anonymer Struktur:
+	var etwas {
+		var inhalt Int
+	}
 
 	# alle Subtypen sind unter dem Haupttyp gescoped (im Gegensatz zu Haskell)
 	# in speziellen Situationen (z.B. Varianten-Check sind sie direkt sichtbar)
-}
-
-# Anonyme Records (brauchen wir das wirklich?)
-type IgnoreThis {
-	lookHere {
-		someValue Int
-		enabled   Bool
-	}
 }
 
 # Vollständig anonyme Records == Tupel
