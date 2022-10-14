@@ -9,20 +9,20 @@ use foo.bar.baz
 # U8 U16 U32 U64
 
 # Typ-Aliase
-type Byte = U8
-type Char = U32 # unicode codepoint
-type UInt = U64
-type Int = I64
+type Byte  = U8
+type Char  = U32 # unicode codepoint
+type UInt  = U64
+type Int   = I64
 type Float = F64
 
 # strukturale Typen
-type Car = {
+type Car {
 	var seats U8
 	var speed F64
 }
 
 # parametrische Typen
-type Pair<A, B> = {
+type Pair(A, B) {
 	var fst A
 	var snd B
 }
@@ -31,20 +31,20 @@ type Pair<A, B> = {
 type Number = Int | UInt | Float
 
 # Subtypen
-type Foo = {
+type Foo {
 	# mögliche Inhalte für Foo
 	# Zugriff nur in Subtyp-safe Bereich möglich!
-	| SubtypA = {
+	| SubtypA {
 		var eins Int
 		var zwei Int
 	}
-	| SubtypB = {
+	| SubtypB {
 		var drei Int
 		var vier Int
 	}
 
 	# Subtypen können auch nur definiert werden
-	type SubtypC = {
+	type SubtypC {
 		var fünf Int
 	}
 
@@ -57,22 +57,18 @@ type Foo = {
 	# in speziellen Situationen (z.B. Varianten-Check sind sie direkt sichtbar)
 }
 
-# Funktionstypen
-type Supplier<T> = () T
-type Consumer<T> = (T) ()
-type BinaryOp = (Int, Int) Int
-
 # Anonyme Records (brauchen wir das wirklich?)
-type IgnoreThis = {
-	lookHere: {
-		someValue: Int
-		enabled: Bool
+type IgnoreThis {
+	lookHere {
+		someValue Int
+		enabled   Bool
 	}
 }
 
 # Vollständig anonyme Records == Tupel
 type TwoNumbers = (Int, UInt)
 
-type Get<T> = (list: List<T>, index: UInt): T
-func get1<T>(list: List<T>, index: UInt): T {}
-func get2: Get {} # TODO head übernimmt typdeklaration?
+# Funktionstypen
+type Get func (T, list List(T), index UInt) T
+func get1(T, list List(T), index UInt) T {}
+func get2 = Get {} # TODO head übernimmt typdeklaration?

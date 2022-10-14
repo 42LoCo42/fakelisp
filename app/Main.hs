@@ -1,8 +1,9 @@
 module Main where
 
-import Parser
 import System.Environment (getArgs)
-import Text.Parsec
+import Text.Parsec        (parse)
+
+import Parser (fileP)
 
 main :: IO ()
 main = do
@@ -10,4 +11,4 @@ main = do
   let test = if null args then "test.fl" else head args
   file <- readFile test
   let vals = parse fileP test file
-  either print (mapM_ print) vals
+  print vals

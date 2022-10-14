@@ -1,23 +1,28 @@
+{-# LANGUAGE MultiWayIf #-}
 module Parser where
 
-import Control.Monad (replicateM)
-import Data.Char (isDigit, isLetter)
-import Data.Maybe (isJust)
+import Control.Monad (replicateM, void)
+import Data.Char     (isDigit, isLetter)
+import Data.Functor  (($>))
+import Data.List     (find)
+import Data.Maybe    (fromJust, isNothing)
 import Text.Parsec
-import Text.Printf (printf)
+import Text.Printf   (printf)
 import Types
 
-commentP :: Parser String
-commentP = char '#' *> (dropWhile (== ' ') <$> many (noneOf "\n"))
+commentP :: Parser ()
+commentP = char '#' *> many (noneOf "\n") $> ()
 
-spaceP :: Parser Space
-spaceP = do
-  let normal = " \t"
-  let special = "\n,"
-  val <- many1 (oneOf (normal ++ special) <|> '\n' <$ commentP)
-  if any (`elem` val) special
-    then return Special
-    else return Normal
+sepP :: Bool -> Parser Sep
+sepP allowComma = do
+  chars <- many (commentP $> '\n' <|> oneOf " \t,;\n")
+  let commaCount = if allowComma then length $ filter (`elem` ",;") chars else 0
+  let breakCount = length $ filter (== '\n') chars
+  if
+    | commaCount >  1 -> fail "Only one comma allowed per separator"
+    | commaCount == 1 -> return Comma
+    | breakCount >= 1 -> return Break
+    | otherwise       -> return Normal
 
 intP :: Parser Value
 intP = Int . read <$> many1 digit
@@ -25,11 +30,11 @@ intP = Int . read <$> many1 digit
 atomP :: Parser Value
 atomP = Atom <$> many1 (satisfy (\c -> any (\f -> f c) options))
   where
-    symbols = "!?+-*/=%&~:@.|"
+    symbols = "+-*/<=>^!$%&?`~:.@|"
     options =
-      [ isLetter,
-        isDigit,
-        (`elem` symbols)
+      [ isLetter
+      , isDigit
+      , (`elem` symbols)
       ]
 
 rawCharP :: Parser Char
@@ -58,42 +63,53 @@ stringP = char '"' *> (String <$> rawStringP) <* char '"'
 
 listP :: Parser Value
 listP = do
-  opening <- oneOf (map fst brackets) <* optional spaceP
-  let btup = head $ filter (\t -> fst t == opening) brackets
-  -- handle empty lists
-  end <- optional spaceP *> optionMaybe (char $ snd btup)
-  if isJust end
-    then return $ List btup []
-    else List btup . reverse <$> innerListP btup False []
+  openChar <- oneOf $ map fst brackets
+  let bracket = fromJust $ find ((== openChar) . fst) brackets
+  blockP $ Just bracket
 
-defaultInnerListP :: Bracket -> Parser [Value]
-defaultInnerListP b = reverse <$> innerListP b False []
-
-innerListP :: Bracket -> Bool -> [Value] -> Parser [Value]
-innerListP outerBracket multiMode acc0 = do
-  value <- optional spaceP *> valueP
-  let acc = value : acc0
-  let flush mlm' =
-        if mlm' && length acc > 1
-          then [List outerBracket $ reverse acc]
-          else acc
-  maybeSpc <- (Just Special ==) <$> optionMaybe spaceP
-  maybeEnd <- optionMaybe (eof <|> () <$ char (snd outerBracket))
-  case (maybeSpc, maybeEnd) of
-    (_, Just _) -> return $ flush multiMode
-    (False, _) -> innerListP outerBracket multiMode acc
-    (True, _) -> (++ flush True) <$> innerListP outerBracket True []
+blockP :: Maybe Bracket -> Parser Value
+blockP bracket = do
+  let endP = optionMaybe $ maybe eof (void . char . snd) bracket
+  let specialBreak = isNothing bracket || bracket == Just brCurly
+  let item normal acc = do
+        value <- valueP
+        sep   <- sepP True
+        let push    = value : acc
+        let sublist = (False, [], ((List $ reverse push) :))
+        let single  = (False, [], (value :))
+        let (normal', acc', ret) = case (sep, bracket) of
+              (Normal, _) -> (normal, push, id)
+              (Comma,  _) ->
+                if null acc then single else sublist
+              (Break, _) ->
+                if specialBreak || not (null acc)
+                then sublist
+                else single
+        maybeEnd <- endP
+        ret <$>
+          if isNothing maybeEnd
+          then item normal' acc'
+          else return $ if
+            | null acc'        -> []
+            | length acc' == 1 -> if specialBreak then [List acc'] else acc'
+            | normal'          -> reverse acc'
+            | otherwise        -> [List $ reverse acc']
+  void $ sepP False
+  earlyEnd <- endP
+  if isNothing earlyEnd
+  then List <$> item True []
+  else return $ List []
 
 valueP :: Parser Value
 valueP =
   foldl1
     (<|>)
-    [ listP,
-      intP,
-      atomP,
-      charP,
-      stringP
+    [ listP
+    , intP
+    , atomP
+    , charP
+    , stringP
     ]
 
-fileP :: Parser [Value]
-fileP = defaultInnerListP brRound
+fileP :: Parser Value
+fileP = blockP Nothing
